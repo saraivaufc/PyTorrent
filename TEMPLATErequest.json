@@ -1,0 +1,35 @@
+
+To vivo - Request
+{
+	"type" : 1,
+	"file" : "asdasdasdasdasdasdasdadasd",
+}
+To vivo - Response
+{
+	"type" : 1,
+}
+
+
+Tenho Isso - Request
+{
+	"type" : 2,
+	"file" : "asdasdasdasdasdasdasdadasd",
+	"part" : "9osahdsiahidhaishdiahishdi"
+}
+Tenho Isso - Response
+{
+	"type" : "2"
+}
+
+
+Quero Isso - Request
+{
+	"type" : 3,
+	"file" : "asdasdasdasdasdasdasdadasd",
+	"part" : "9osahdsiahidhaishdiahishdi"
+}
+Quero Isso - Response
+{
+	"type" : 3,
+	"swarm" : Swarm
+}

@@ -3,11 +3,14 @@ import hashlib, os, pickle
 from threading import Thread
 import multiprocessing
 
+chunk = 1024 * 512
+
 class File(object):
 	"""docstring for File"""
 	__path = None
 	__hash = None
 	__parts = None
+
 	def __init__(self, path = None):
 		self.__path = path
 		self.__parts = []
@@ -31,12 +34,15 @@ class File(object):
 	def get_hash_disk(self):
 		BLOCKSIZE = 65536
 		hasher = hashlib.md5()
-		with open(self.__path, 'rb') as afile:
-			buf = afile.read(BLOCKSIZE)
-			while len(buf) > 0:
-				hasher.update(buf)
+		try:
+			with open(self.__path, 'rb') as afile:
 				buf = afile.read(BLOCKSIZE)
-		return hasher.hexdigest()
+				while len(buf) > 0:
+					hasher.update(buf)
+					buf = afile.read(BLOCKSIZE)
+			return hasher.hexdigest()
+		except:
+			return None
 	def get_parts_not_found(self):
 		self.load()
 		not_found = []
@@ -55,11 +61,28 @@ class File(object):
 			pass
 		part_file.set_data(data)
 
-	def part_to_data(self, hash):
+	def part_to_data_in_parts(self, hash):
+		part_file = part.Part(hash)
+		data = None
+		for i in self.__parts:
+			if i == part_file:
+				data = i.to_array()
+		if data == None:
+			data = self.part_to_data_in_file(hash)
+		return data
+
+	def part_to_data_in_file(self, hash):
 		part_file = part.Part(hash)
 		for i in self.__parts:
 			if i == part_file:
-				return part_file.to_array()
+				try:
+					file = open(self.__path, "rb")
+				except:
+					return self.part_to_data_in_parts(hash)
+				file.seek(i.get_index() - chunk)
+				data_file = file.read(chunk)
+				file.close()
+				return data_file
 
 
 
@@ -90,7 +113,7 @@ class File(object):
 		except:
 			print "Ainda nao existe registros"
 			return False
-	def load_parts(self):
+	def divider_parts(self):
 		try:
 			file = open(self.__path, "rb")
 		except:
@@ -99,21 +122,30 @@ class File(object):
 		file.seek(0, 2)
 		size_file = file.tell()
 		file.seek(0)
-		chunk = 1024 * 512
 		while file.tell() < size_file:
 			buffer = file.read(chunk)
-			part_file = part.Part(hashlib.md5(buffer),str(self.__hash) + "/")
-			part_file.set_data(buffer)
+			part_file = part.Part(hashlib.md5(buffer).hexdigest(),str(self.__hash) + "/", file.tell())
 			self.__parts.append(part_file)
+		self.export()
 
 	def export(self):
 		dict_data = {'hash':self.__hash , 'path': self.__path , 'parts': self.__parts }
 		string = pickle.dump(dict_data, open( self.__path + ".pytorrent" , "wb" ))
 
 		
+class CreatorSegment(Thread):
+	"""docstring for CreatorSegment"""
+	def __init__(self):
+		Thread.__init__(self)
 
-#f = File('ubuntu-12.04.5-desktop-i386.iso')
+	def run(self, file, ):
+		pass
+
+		
+
+
+# #f = File('ubuntu-12.04.5-desktop-i386.iso')
 f = File('Raimundos  mulher de fases.mp3')
-f.load_parts()
-#f.data_to_part("ssijdsdijsijdsidjisjd");
-#print f.part_to_data("735aa7f2d2a10430f46c53e1cc91654a")
+f.divider_parts()
+# #print f.part_to_data_in_file("6a81a2f1b03c16207509ec5356dfa684")
+# #print f.part_to_data_in_parts("6a81a2f1b03c16207509ec5356dfa684")

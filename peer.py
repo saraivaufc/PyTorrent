@@ -1,6 +1,8 @@
 import  address
-import tracker
+#import tracker
 import leecher, seed
+from socket import *
+import pickle
 
 class Peer(leecher.Leecher, seed.Seed):
 	"""docstring for Peer"""
@@ -9,13 +11,24 @@ class Peer(leecher.Leecher, seed.Seed):
 	__speed_upload = None
 	__trackers = None
 
-	def __init__(self, address = None, spped_download = 0.0, spped_upload = 0.0, trackers = []):
+	def __init__(self, address = None, trackers = []):
 		self.__address = address
-		self.__speed_download = spped_download
-		self.__speed_upload = spped_upload
+		self.__speed_download = 0.0
+		self.__speed_upload = 0.0
 		self.__trackers = trackers
 	def __eq__(self, peer):
-		return self.__address == peer.__address
+		return self.__address.get_ip() == peer.__address.get_ip()
+
+	def run(self):
+		client_socket = socket(AF_INET, SOCK_DGRAM)
+		message = pickle.dumps({"type": 1 })
+		client_socket.sendto(message, ("127.0.0.1", 8000))
+		print "Peer : Requiscao Enviada"
+		message, tracker_address = client_socket.recvfrom(2084)
+		print "Peer : Resposta Recebida" + message
+		client_socket.close()
+
+
 
 	def set_address(self, address):
 		self.__address = address
@@ -47,8 +60,3 @@ class Peer(leecher.Leecher, seed.Seed):
 			return True
 		except:
 			return False
-
-
-
-
-		

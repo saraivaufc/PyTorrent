@@ -6,9 +6,10 @@ class Part():
 	__path = None
 	__index = None
 	
-	def __init__(self, hash = None, dir  = None):
+	def __init__(self, hash = None, dir  = None, index = None):
 		self.__hash = hash
 		self.__path = str(dir) + str(hash) + ".part"
+		self.__index = index
 		self.create_dir(dir)
 	def __eq__(self, part):
 		return self.__hash == part.__hash
@@ -21,25 +22,8 @@ class Part():
 
 	def set_hash(self, hash):
 		self.__hash = hash
-	def get_hash(self):
-		return self.__hash
-	def get_hash_disk(self):
-		try:
-			data = self.get_data()
-			return hashlib.md5(data).hexdigest()
-		except:
-			return None
-
 	def set_path(self, path):
 		self.__path = path
-	def get_path(self):
-		return self.__path
-
-	def get_data(self):
-		try:
-			return open(self.__path, "rb").read()
-		except:
-			return None
 	def set_data(self, data):
 		try:
 			import os.path
@@ -51,6 +35,26 @@ class Part():
 			file.close()
 		except:
 			print "IOError"
+
+
+	def get_hash(self):
+		return self.__hash
+	def get_hash_disk(self):
+		try:
+			data = self.get_data()
+			return hashlib.md5(data).hexdigest()
+		except:
+			return None	
+	def get_path(self):
+		return self.__path
+	def get_index(self):
+		return self.__index
+		
+	def get_data(self):
+		try:
+			return open(self.__path, "rb").read()
+		except:
+			return None
 
 	def checksum(self):
 		return self.__hash == self.get_hash_disk()
