@@ -1,4 +1,4 @@
-
+TRACKER
 To vivo - Request
 {
 	"type" : 1,
@@ -6,7 +6,7 @@ To vivo - Request
 }
 To vivo - Response
 {
-	"type" : 1,
+	"type" : 10,
 }
 
 
@@ -18,7 +18,7 @@ Tenho Isso - Request
 }
 Tenho Isso - Response
 {
-	"type" : "2"
+	"type" : 20
 }
 
 
@@ -26,10 +26,24 @@ Quero Isso - Request
 {
 	"type" : 3,
 	"file" : "asdasdasdasdasdasdasdadasd",
-	"part" : "9osahdsiahidhaishdiahishdi"
 }
 Quero Isso - Response
 {
-	"type" : 3,
-	"swarm" : Swarm
+	"type" : 30,
+	"swarm" : Swarm,
+}
+
+PEER
+Request - Me manda essa part
+{
+	"type" : 1,
+	"file" : "sodada",
+	"part" : "ijdsaijdisasjd"
+}
+Response
+{
+	"type": 10,
+	"file" : "sodada",
+	"part" : "ijdsaijdisasjd",
+	"data" : "saidjiasjdijasda",
 }

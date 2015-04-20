@@ -74,11 +74,23 @@ class Tracker():
 		response = ""
 		type_request = int(request["type"])
 		if type_request == 1:
-			pass
+			if  not (address.get_ip() in self.__seeds_alive): 
+				self.__seeds_alive.append(address.get_ip())
+			response = pickle.dumps({"type": 10})
 		elif type_request == 2:
-			pass
+			hash_file = request["file"]
+			hash_part = request["part"]
+			self.add_peer_in_swarm(hash_file, hash_part, address)
+			response = pickle.dumps({"type": 20})
 		elif type_request == 3:
-			pass
+			hash_file = request["file"]
+			try:
+				swarm_file = self.__swarms[hash_file]
+				response = pickle.dumps({"type": 30, "swarm": swarm_file })
+			except:
+				response = "Erro"
+				print "Hash File not found"
 		socket.sendto(response, address)
+		print "Tracker : Resposta Enviada"
 
 #nc -u localhost 8000

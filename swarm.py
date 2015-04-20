@@ -60,7 +60,10 @@ class PartPeer():
 		return self.__hash_part
 
 	def add_peer(self, peer):
-		self.__peers.append(peer)
+		if peer in self.__peers:
+			return
+		else:
+			self.__peers.append(peer)
 
 	def remove_peer(self, peer):
 		self.__peers.remove(peer)

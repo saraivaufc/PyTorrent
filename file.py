@@ -31,6 +31,9 @@ class File(object):
 		return self.__path
 	def get_hash(self):
 		return self.__hash
+	def get_parts(self):
+		self.load()
+		return self.__parts
 	def get_hash_disk(self):
 		BLOCKSIZE = 65536
 		hasher = hashlib.md5()
@@ -106,13 +109,15 @@ class File(object):
 	def load(self):
 		try:
 			dict_data = pickle.load( open( self.__path + ".pytorrent") )
-			self.__hash = dict_data['hash']
-			self.__path = dict_data['path']
-			self.__parts = dict_data['parts']
-			return True
 		except:
-			print "Ainda nao existe registros"
-			return False
+			try:
+				dict_data = pickle.load( open(self.__path) )
+			except:
+				return False
+		self.__hash = dict_data['hash']
+		self.__path = dict_data['path']
+		self.__parts = dict_data['parts']
+		return True
 	def divider_parts(self):
 		try:
 			file = open(self.__path, "rb")
