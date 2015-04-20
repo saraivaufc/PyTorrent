@@ -84,9 +84,15 @@ class Tracker():
 			response = pickle.dumps({"type": 20})
 		elif type_request == 3:
 			hash_file = request["file"]
+			hash_part = request["part"]
 			try:
 				swarm_file = self.__swarms[hash_file]
-				response = pickle.dumps({"type": 30, "swarm": swarm_file })
+				peers = swarm_file.get_peers(hash_part)
+				address_peers = []
+				for i in peers:
+					address_peers.append(i.get_address())
+				print address_peers
+				response = pickle.dumps({"type": 30 , "address_peers": address_peers }) #"swarm": swarm_file
 			except:
 				response = "Erro"
 				print "Hash File not found"

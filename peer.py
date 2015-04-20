@@ -41,7 +41,33 @@ class Peer():
 		th.start()
 		
 	def download_thread(self, path):
-		file = file.File(path)
+		f = file.File(path)
+		hash_file = f.get_hash()
+		self.__files_download[hash_file] = f
+		client_socket = socket(AF_INET, SOCK_DGRAM)
+		
+		#para cada uma das partes
+		for i in f.get_parts():
+			hash_part = i.get_hash()
+			message = pickle.dumps({"type":3, "file": hash_file, "part": hash_part })
+
+			#para cada um dos trackers
+			for k in self.__trackers:
+				client_socket.sendto(message, (k.get_address().get_ip(),k.get_address().get_port()))
+				print "Peer - Pergunta enviada"
+			while 1:
+				message, client_address = client_socket.recvfrom(2084)
+				print "Peer - Resposta Recebida"
+				try:
+					message = pickle.loads(message)
+					th=Thread( target=self.download_part_thread,
+								args = ( hash_file,hash_part, message ) )
+					th.start()
+				except:
+					print "Falha ao carregar a resposta"
+	def download_part_thread(self, hash_file, hash_part, message):
+		pass
+
 
 	def upload(self, path):
 		th=Thread( target=self.upload_thread,
@@ -49,18 +75,17 @@ class Peer():
 		th.start()
 	def upload_thread(self, path):
 		f = file.File(path)
-		f.divider_parts()
 		self.__files_upload[f.get_hash()] = f
+		f.divider_parts()
 		client_socket = socket(AF_INET, SOCK_DGRAM)
 		for i in f.get_parts():
 			message = pickle.dumps({"type": 2, "file": f.get_hash(), "part": i.get_hash() })
-			print "Hash FIle == " + f.get_hash() + " Hash Part == "  + i.get_hash()
 			for k in self.__trackers:
 				client_socket.sendto(message, (k.get_address().get_ip(),k.get_address().get_port()))
 		while 1:
 			message, client_address = client_socket.recvfrom(2084)
 			message = pickle.loads(message)
-			if int(message["file"]) == 1:
+			if int(message["type"]) == 1:
 				th=Thread( target=self.upload_part_thread,
 						args = ( message["file"], message["part"], client_address, client_socket))
 				th.start()
