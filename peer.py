@@ -1,6 +1,6 @@
 import  address
 #import tracker
-import leecher, seed, file
+import file
 from socket import *
 import pickle
 from threading import Thread
