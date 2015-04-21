@@ -66,7 +66,20 @@ class Peer():
 				except:
 					print "Falha ao carregar a resposta"
 	def download_part_thread(self, hash_file, hash_part, message):
-		pass
+		for i in message["address_peers"]:
+			client_socket_download = socket(AF_INET, SOCK_DGRAM)
+			msn = pickle.dumps({"type": 1,"file": hash_file, "part" : hash_part})
+			client_socket_download.sendto(msn, i )
+			th=Thread( target=self.download_part_peer,
+								args = ( hash_file,hash_part, client_socket_download ) )
+			th.start()
+
+	def download_part_peer(self, hash_file, hash_part, socket_download):
+		print "Heelo"
+		message, client_address = socket_download.recvfrom(2084)
+		print message
+
+
 
 
 	def upload(self, path):
@@ -100,6 +113,7 @@ class Peer():
 		except:
 			pass
 		socket.sendto(response, address)
+		print "Enviado Part para o Peer que requisitou"
 
 
 
