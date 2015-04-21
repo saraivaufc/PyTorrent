@@ -1,7 +1,7 @@
 import  address
 #import tracker
 import file
-from socket import *
+import socket
 import pickle
 from threading import Thread
 
@@ -14,6 +14,8 @@ class Peer():
 	__trackers = None
 	__files_upload = None
 	__files_download = None
+	__socket_peer_download = None
+	__socket_peer_upload = None
 
 	def __init__(self, address = None, trackers = []):
 		self.__address = address
@@ -26,13 +28,9 @@ class Peer():
 		return self.__address.get_ip() == peer.__address.get_ip()
 
 	def run(self):
-		client_socket = socket(AF_INET, SOCK_DGRAM)
-		message = pickle.dumps({"type": 2, "file": "sdadsadsa", "part": "sdjad" })
-		client_socket.sendto(message, ("127.0.0.1", 8000))
-		print "Peer : Requiscao Enviada"
-		message, tracker_address = client_socket.recvfrom(2084)
-		print "Peer : Resposta Recebida == " + message
-		client_socket.close()
+		self.__socket_peer_download = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+		self.__socket_peer_upload = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+		
 
 	# Path references .pytorrent
 	def download(self, path):
@@ -44,8 +42,6 @@ class Peer():
 		f = file.File(path)
 		hash_file = f.get_hash()
 		self.__files_download[hash_file] = f
-		client_socket = socket(AF_INET, SOCK_DGRAM)
-		
 		#para cada uma das partes
 		for i in f.get_parts():
 			hash_part = i.get_hash()
@@ -53,11 +49,12 @@ class Peer():
 
 			#para cada um dos trackers
 			for k in self.__trackers:
-				client_socket.sendto(message, (k.get_address().get_ip(),k.get_address().get_port()))
-				print "Peer - Pergunta enviada"
+				self.__socket_peer_download.sendto(message, (k.get_address().get_ip(),k.get_address().get_port()))
+				print "Peer download- eu " + str(self.__socket_peer_download.getsockname()) + " pedir ao tracker " + str(k.get_address()) + "a lista dos peer dese arquivo"
 			while 1:
-				message, client_address = client_socket.recvfrom(2084)
-				print "Peer - Resposta Recebida"
+				#response in 30
+				message, tracker_address = self.__socket_peer_download.recvfrom(2084)
+				print "Peer download- eu " + str(self.__socket_peer_download.getsockname()) + " recebi do tracker" + str(tracker_address) + "a lista dos peers"
 				try:
 					message = pickle.loads(message)
 					th=Thread( target=self.download_part_thread,
@@ -67,17 +64,20 @@ class Peer():
 					print "Falha ao carregar a resposta"
 	def download_part_thread(self, hash_file, hash_part, message):
 		for i in message["address_peers"]:
-			client_socket_download = socket(AF_INET, SOCK_DGRAM)
 			msn = pickle.dumps({"type": 1,"file": hash_file, "part" : hash_part})
-			client_socket_download.sendto(msn, i )
+			socket_cliente = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+			socket_cliente.sendto(msn, i )
+			print "Peer download: "+ str(socket_cliente.getsockname()) +"  requisitei ao peer " + str(i) + "um data de uma parte"
 			th=Thread( target=self.download_part_peer,
-								args = ( hash_file,hash_part, client_socket_download ) )
+						args = ( hash_file,hash_part, socket_cliente) )
 			th.start()
 
-	def download_part_peer(self, hash_file, hash_part, socket_download):
-		print "Heelo"
-		message, client_address = socket_download.recvfrom(2084)
-		print message
+	def download_part_peer(self, hash_file, hash_part, socket_cliente):
+		while 1:
+			message, peer_address = socket_cliente.recvfrom(2084 * 552)
+			print "Pee download, "+ str(socket_cliente.getsockname()) +" recebi do peer " + str(peer_address) + "um arquivo"
+			message = pickle.loads(message)
+			print message["data"]
 
 
 
@@ -90,33 +90,33 @@ class Peer():
 		f = file.File(path)
 		self.__files_upload[f.get_hash()] = f
 		f.divider_parts()
-		client_socket = socket(AF_INET, SOCK_DGRAM)
 		for i in f.get_parts():
 			message = pickle.dumps({"type": 2, "file": f.get_hash(), "part": i.get_hash() })
 			for k in self.__trackers:
-				client_socket.sendto(message, (k.get_address().get_ip(),k.get_address().get_port()))
+				self.__socket_peer_upload.sendto(message, (k.get_address().get_ip(),k.get_address().get_port()))
+				print "Peer upload : Eu "+  str(self.__address) +"  mandei um arquivo pro tracker " + str(k.get_address())
 		while 1:
-			message, client_address = client_socket.recvfrom(2084)
+			message, peer_address = self.__socket_peer_upload.recvfrom(2084)
 			message = pickle.loads(message)
 			if int(message["type"]) == 1:
+				print "Peer upload : Eu " + str(self.__address) + "recebi do Peer " + str(peer_address) + "um pedido de arquivo" 
 				th=Thread( target=self.upload_part_thread,
-						args = ( message["file"], message["part"], client_address, client_socket))
+						args = ( message["file"], message["part"], peer_address))
 				th.start()
-		client_socket.close()
+			else:
+				print "Peer upload: "+ str(self.__address) +", O Tracker " + str(peer_address) + "confirmou o recebimento do meu upload"
 
-	def upload_part_thread(self,hash_file, hash_part, address, socket):
+	def upload_part_thread(self,hash_file, hash_part, address):
 		response = ""
 		try:
 			f = self.__files_upload[hash_file]
-			data = f.part_to_data_in_parts()
+			data = f.part_to_data_in_parts(hash_file)
+			print data
 			response = pickle.dumps({"type": 10, "hash": hash_file, "part": hash_part, "data": data })
 		except:
-			pass
-		socket.sendto(response, address)
-		print "Enviado Part para o Peer que requisitou"
-
-
-
+			response = "404"
+		self.__socket_peer_upload.sendto(response, address)
+		print "Peer upload: Eu " + str(self.__address) + "respondi com a parte ao peer " + str(address)
 
 
 	def set_address(self, address):

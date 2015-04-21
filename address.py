@@ -10,6 +10,11 @@ class Address():
 	def __eq__(self, address):
 		return self.__ip == address.__ip and self.__port == address.__port
 
+	def __repr__(self):
+		return str(self.__ip) + ":" + str(self.__port)
+
+
+
 	def set_ip(self, ip):
 		self.__ip = ip
 
