@@ -1,9 +1,13 @@
 import  address
 #import tracker
-import file
 import socket
 import pickle
 from threading import Thread
+import file
+
+buffer = 65507
+
+# max 65536 Bytes
 
 
 class Peer():
@@ -16,6 +20,7 @@ class Peer():
 	__files_download = None
 	__socket_peer_download = None
 	__socket_peer_upload = None
+	__parts_requested = None
 
 	def __init__(self, address = None, trackers = []):
 		self.__address = address
@@ -24,6 +29,7 @@ class Peer():
 		self.__files_download = {}
 		self.__files_upload = {}
 		self.__trackers = trackers
+		self.__parts_requested = {}
 	def __eq__(self, peer):
 		return self.__address.get_ip() == peer.__address.get_ip()
 
@@ -53,7 +59,7 @@ class Peer():
 				print "Peer download- eu " + str(self.__socket_peer_download.getsockname()) + " pedir ao tracker " + str(k.get_address()) + "a lista dos peer dese arquivo"
 			while 1:
 				#response in 30
-				message, tracker_address = self.__socket_peer_download.recvfrom(2084)
+				message, tracker_address = self.__socket_peer_download.recvfrom(buffer)
 				print "Peer download- eu " + str(self.__socket_peer_download.getsockname()) + " recebi do tracker" + str(tracker_address) + "a lista dos peers"
 				try:
 					message = pickle.loads(message)
@@ -62,6 +68,7 @@ class Peer():
 					th.start()
 				except:
 					print "Falha ao carregar a resposta"
+				#break
 	def download_part_thread(self, hash_file, hash_part, message):
 		for i in message["address_peers"]:
 			msn = pickle.dumps({"type": 1,"file": hash_file, "part" : hash_part})
@@ -74,10 +81,22 @@ class Peer():
 
 	def download_part_peer(self, hash_file, hash_part, socket_cliente):
 		while 1:
-			message, peer_address = socket_cliente.recvfrom(2084 * 552)
+			message, peer_address = socket_cliente.recvfrom(buffer)
 			print "Pee download, "+ str(socket_cliente.getsockname()) +" recebi do peer " + str(peer_address) + "um arquivo"
-			message = pickle.loads(message)
-			print message["data"]
+			print "Receebi=" + str(len(message))
+			try:
+				message = pickle.loads(message)
+			except:
+				print "Erro ao Converter"
+				return
+			hash_file = message["file"]
+			data = message["data"]
+			f = file.File("saida/saida.mp3")
+			f.data_to_part(data)
+			# if f.is_complete():
+			# 	f.merge()
+			# 	break
+
 
 
 
@@ -96,7 +115,7 @@ class Peer():
 				self.__socket_peer_upload.sendto(message, (k.get_address().get_ip(),k.get_address().get_port()))
 				print "Peer upload : Eu "+  str(self.__address) +"  mandei um arquivo pro tracker " + str(k.get_address())
 		while 1:
-			message, peer_address = self.__socket_peer_upload.recvfrom(2084)
+			message, peer_address = self.__socket_peer_upload.recvfrom(buffer)
 			message = pickle.loads(message)
 			if int(message["type"]) == 1:
 				print "Peer upload : Eu " + str(self.__address) + "recebi do Peer " + str(peer_address) + "um pedido de arquivo" 
@@ -110,11 +129,11 @@ class Peer():
 		response = ""
 		try:
 			f = self.__files_upload[hash_file]
-			data = f.part_to_data_in_parts(hash_file)
-			print data
-			response = pickle.dumps({"type": 10, "hash": hash_file, "part": hash_part, "data": data })
+			data = f.part_to_data_in_parts(hash_part)
+			response = pickle.dumps({"type": 10, "file": hash_file, "part": hash_part, "data": data })
 		except:
 			response = "404"
+		print "Tamanho para enviar = " + str(response)
 		self.__socket_peer_upload.sendto(response, address)
 		print "Peer upload: Eu " + str(self.__address) + "respondi com a parte ao peer " + str(address)
 

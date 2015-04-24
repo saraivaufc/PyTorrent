@@ -3,7 +3,8 @@ import hashlib, os, pickle
 from threading import Thread
 import multiprocessing
 
-chunk = 1024 * 512
+chunk = 569344
+#chunk = 64000
 
 class File(object):
 	"""docstring for File"""
@@ -64,24 +65,28 @@ class File(object):
 			pass
 		part_file.set_data(data)
 
-	def part_to_data_in_parts(self, hash):
+	def part_to_data_in_parts(self, hash, dead= False):
 		part_file = part.Part(hash)
 		data = None
 		for i in self.__parts:
 			if i == part_file:
 				data = i.to_array()
-		if data == None:
-			data = self.part_to_data_in_file(hash)
+		if data == None or len(data) <= 1:
+			if dead == True:
+				return None
+			data = self.part_to_data_in_file(hash, True)
 		return data
 
-	def part_to_data_in_file(self, hash):
+	def part_to_data_in_file(self, hash, dead= False):
 		part_file = part.Part(hash)
 		for i in self.__parts:
 			if i == part_file:
 				try:
 					file = open(self.__path, "rb")
 				except:
-					return self.part_to_data_in_parts(hash)
+					if dead == True:
+						return None
+					return self.part_to_data_in_parts(hash, True)
 				file.seek(i.get_index() - chunk)
 				data_file = file.read(chunk)
 				file.close()
@@ -119,6 +124,7 @@ class File(object):
 		self.__parts = dict_data['parts']
 		return True
 	def divider_parts(self):
+		print "Iniciando Particionamento"
 		try:
 			file = open(self.__path, "rb")
 		except:
@@ -130,27 +136,14 @@ class File(object):
 		while file.tell() < size_file:
 			buffer = file.read(chunk)
 			part_file = part.Part(hashlib.md5(buffer).hexdigest(),str(self.__hash) + "/", file.tell())
+			part_file.set_data(buffer)
 			self.__parts.append(part_file)
 		self.export()
+		print "Terminou o particionamento"
 
 	def export(self):
 		dict_data = {'hash':self.__hash , 'path': self.__path , 'parts': self.__parts }
 		string = pickle.dump(dict_data, open( self.__path + ".pytorrent" , "wb" ))
 
-		
-class CreatorSegment(Thread):
-	"""docstring for CreatorSegment"""
-	def __init__(self):
-		Thread.__init__(self)
-
-	def run(self, file, ):
+	def is_complete(self):
 		pass
-
-		
-
-
-# #f = File('ubuntu-12.04.5-desktop-i386.iso')
-f = File('Raimundos  mulher de fases.mp3')
-f.divider_parts()
-# #print f.part_to_data_in_file("6a81a2f1b03c16207509ec5356dfa684")
-# #print f.part_to_data_in_parts("6a81a2f1b03c16207509ec5356dfa684")

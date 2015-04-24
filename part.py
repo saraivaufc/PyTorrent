@@ -63,7 +63,7 @@ class Part():
 		try:
 			data = open(self.__path, "rb").read()
 		except:
-			print "Erro IO"
+			print "Erro IO - to_array"
 			return None
 		if hashlib.md5(data).hexdigest() != self.__hash:
 			print "Erro no Ckecksum da Part"

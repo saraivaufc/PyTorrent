@@ -4,6 +4,9 @@ from socket import *
 from threading import Thread
 import pickle
 
+
+chunk = 1024 * 10
+
 class Tracker():
 	"""docstring for Tracker"""
 
@@ -24,7 +27,7 @@ class Tracker():
 		self.__socket_tracker = socket(AF_INET, SOCK_DGRAM)
 		self.__socket_tracker.bind((self.__address.get_ip(),self.__address.get_port()))
 		while 1:
-			message, client_address = self.__socket_tracker.recvfrom(2084)
+			message, client_address = self.__socket_tracker.recvfrom(chunk)
 			print "Tracker : Pergunta Recebida de " + str(client_address) + " no endereco:" + str(self.__address)
 			th=Thread( target=self.treat_request_thread,
 						args = ( client_address, message))
