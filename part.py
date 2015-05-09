@@ -73,3 +73,11 @@ class Part():
 			print "Erro no Ckecksum da Part"
 			return None
 		return data
+
+	def exist(self):
+		try:
+			data = open(self.__path, "rb").read()
+			return  hashlib.md5(data).hexdigest() == self.__hash
+		except:
+			print "checksum --> PART NOT FOUND"
+			return False

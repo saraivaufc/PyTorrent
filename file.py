@@ -117,17 +117,23 @@ class File(object):
 	def load(self):
 		print "load file: " + self.__path
 		try:
-			dict_data = json.loads(open(self.__path).read())
+			dict_data = json.loads( open(self.__path + ".pytorrent").read())
 			print ".pytorrent FOUND"
 		except:
-			print ".pytorrent NOT FOUND"
 			try:
-				dict_data = json.loads( open(self.__path + ".pytorrent").read())
-				print ".File in Disk FOUND"
+				dict_data = json.loads( open(self.__path).read())
+				print ".pytorrent FOUND"
 			except:
-				print ".File in Disk NOT FOUND"
-				open(self.__path, "wb")
-				return False
+				print ".pytorrent NOT FOUND"
+				try:
+					import os.path
+					if os.path.exists(self.__path):
+						self.divider_parts()
+						return self.load()
+					else:
+						return False
+				except:
+					return False
 
 		self.__hash = dict_data['hash']
 		self.__path = dict_data['path']
@@ -171,4 +177,10 @@ class File(object):
 		string = json.dump(dict_data, open( self.__path + ".pytorrent" , "wb" ))
 
 	def is_complete(self):
-		pass
+		self.load()
+		for i in self.__parts:
+			if not i.exist():
+				return False
+		return True
+
+
