@@ -104,7 +104,10 @@ class Peer():
 				if os.path.exists(f.get_path()) == False:
 					print "Chamou merge em download_part_peer completo"
 					open(f.get_path(), "wr")
-					f.merge()
+					if f.merge() == False:
+						print "*******************Arquivo Corrompido ****************"
+					else:
+						print "*************Arquivo baixado com exito **************"
 				break
 
 
