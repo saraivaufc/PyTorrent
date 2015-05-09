@@ -2,7 +2,7 @@ import address, swarm, peer
 
 from socket import *
 from threading import Thread
-import pickle
+import json
 
 
 chunk = 1024 * 10
@@ -74,18 +74,18 @@ class Tracker():
 
 
 	def treat_request_thread(self, address, request):
-		request = pickle.loads(str(request))
+		request = json.loads(str(request))
 		response = ""
 		type_request = int(request["type"])
 		if type_request == 1:
 			if  not (address.get_ip() in self.__seeds_alive): 
 				self.__seeds_alive.append(address.get_ip())
-			response = pickle.dumps({"type": 10})
+			response = json.dumps({"type": 10})
 		elif type_request == 2:
 			hash_file = request["file"]
 			hash_part = request["part"]
 			self.add_peer_in_swarm(hash_file, hash_part, address)
-			response = pickle.dumps({"type": 20})
+			response = json.dumps({"type": 20})
 		elif type_request == 3:
 			hash_file = request["file"]
 			hash_part = request["part"]
@@ -96,7 +96,7 @@ class Tracker():
 				for i in peers:
 					address_peers.append(i.get_address())
 				print address_peers
-				response = pickle.dumps({"type": 30 , "address_peers": address_peers }) #"swarm": swarm_file
+				response = json.dumps({"type": 30 , "address_peers": address_peers }) #"swarm": swarm_file
 			except:
 				response = "Erro"
 				print "Hash File not found"

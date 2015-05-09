@@ -1,11 +1,12 @@
 import hashlib, os
+import json
 
 class Part():
 	"""docstring for Part"""
 	__hash = None
 	__path = None
 	__index = None
-	
+
 	def __init__(self, hash = None, dir  = None, index = None):
 		self.__hash = hash
 		self.__path = str(dir) + str(hash) + ".part"
@@ -14,6 +15,9 @@ class Part():
 	def __eq__(self, part):
 		return self.__hash == part.__hash
 
+	def to_JSON(self):
+		return str(json.dumps({"hash": self.__hash, "path": self.__path, "index": self.__index})).encode("utf_8")
+		
 	def create_dir(self, dir):
 		try:
 			os.mkdir(dir)

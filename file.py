@@ -1,10 +1,12 @@
+#-*- encoding=utf-8 -*-
+
 import part
-import hashlib, os, pickle
+import hashlib, os, json
 from threading import Thread
 import multiprocessing
 
-chunk = 569344
-#chunk = 64000
+#chunk = 569344
+chunk = 50000
 
 class File(object):
 	"""docstring for File"""
@@ -90,6 +92,7 @@ class File(object):
 				file.seek(i.get_index() - chunk)
 				data_file = file.read(chunk)
 				file.close()
+				print "A part veio do arquivo"
 				return data_file
 
 
@@ -112,16 +115,27 @@ class File(object):
 		return self.__hash == self.get_hash_disk()
 
 	def load(self):
+		print "load file: " + self.__path
 		try:
-			dict_data = pickle.load( open( self.__path + ".pytorrent") )
+			dict_data = json.loads(open(self.__path).read())
+			print ".pytorrent FOUND"
 		except:
+			print ".pytorrent NOT FOUND"
 			try:
-				dict_data = pickle.load( open(self.__path) )
+				dict_data = json.loads( open(self.__path + ".pytorrent").read())
+				print ".File in Disk FOUND"
 			except:
+				print ".File in Disk NOT FOUND"
+				open(self.__path, "wb")
 				return False
+
 		self.__hash = dict_data['hash']
 		self.__path = dict_data['path']
-		self.__parts = dict_data['parts']
+		#erro aqui
+		parts_str = json.loads(dict_data['parts'])
+
+		for i in parts_str["parts"]:
+			self.__parts.append(part.Part(i["hash"], self.__hash + "/" , i["index"]))
 		return True
 	def divider_parts(self):
 		print "Iniciando Particionamento"
@@ -142,8 +156,19 @@ class File(object):
 		print "Terminou o particionamento"
 
 	def export(self):
-		dict_data = {'hash':self.__hash , 'path': self.__path , 'parts': self.__parts }
-		string = pickle.dump(dict_data, open( self.__path + ".pytorrent" , "wb" ))
+		json_parts = '{"parts" : ['
+		is_fisrt = True
+		for i in self.__parts:
+			if is_fisrt:
+				is_fisrt = False
+			else:
+
+				json_parts += ','
+
+			json_parts += str(i.to_JSON())
+		json_parts += "]}"
+		dict_data = {'hash': self.__hash , 'path': self.__path , 'parts': str(json_parts) }
+		string = json.dump(dict_data, open( self.__path + ".pytorrent" , "wb" ))
 
 	def is_complete(self):
 		pass
