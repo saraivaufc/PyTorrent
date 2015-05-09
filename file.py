@@ -98,13 +98,15 @@ class File(object):
 
 
 	def merge(self):
+		self.load()
+		print "Fazendo o merge do arquivos"
 		not_found = self.get_parts_not_found()
 		if len(not_found) > 0:
 			return False
-		file = open(self.__path + ".copy", "wb")
+		file = open(self.__path, "wb")
+		print "Foi encontradas " + str(len(self.__parts)) + "No diretorio"
 		for part in self.__parts:
-			array = part.to_array()
-			file.write(array)
+			file.write(part.to_array())
 		file.close()
 		if self.checksum():
 			return True
@@ -140,6 +142,7 @@ class File(object):
 		#erro aqui
 		parts_str = json.loads(dict_data['parts'])
 
+		self.__parts = []
 		for i in parts_str["parts"]:
 			self.__parts.append(part.Part(i["hash"], self.__hash + "/" , i["index"]))
 		return True
@@ -153,6 +156,7 @@ class File(object):
 		file.seek(0, 2)
 		size_file = file.tell()
 		file.seek(0)
+		self.__parts = []
 		while file.tell() < size_file:
 			buffer = file.read(chunk)
 			part_file = part.Part(hashlib.md5(buffer).hexdigest(),str(self.__hash) + "/", file.tell())
@@ -164,14 +168,14 @@ class File(object):
 	def export(self):
 		json_parts = '{"parts" : ['
 		is_fisrt = True
+		print "Export parts " + str(len(self.__parts))
 		for i in self.__parts:
 			if is_fisrt:
 				is_fisrt = False
 			else:
-
 				json_parts += ','
-
 			json_parts += str(i.to_JSON())
+
 		json_parts += "]}"
 		dict_data = {'hash': self.__hash , 'path': self.__path , 'parts': str(json_parts) }
 		string = json.dump(dict_data, open( self.__path + ".pytorrent" , "wb" ))

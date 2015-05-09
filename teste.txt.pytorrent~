@@ -1,0 +1,4 @@
+{"path": "teste.txt", "parts": "{\"parts\" : 
+	[{\"path\": \"85c45d3c1d3e92eabaf5c7eff4a3a7d8/85c45d3c1d3e92eabaf5c7eff4a3a7d8.part\", \"hash\": \"85c45d3c1d3e92eabaf5c7eff4a3a7d8\", \"index\": 31},
+	{\"path\": \"85c45d3c1d3e92eabaf5c7eff4a3a7d8/85c45d3c1d3e92eabaf5c7eff4a3a7d8.part\", \"hash\": \"85c45d3c1d3e92eabaf5c7eff4a3a7d8\", \"index\": 31}
+	]}", "hash": "85c45d3c1d3e92eabaf5c7eff4a3a7d8"}

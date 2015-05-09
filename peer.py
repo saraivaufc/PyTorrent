@@ -73,15 +73,15 @@ class Peer():
 				break
 	def download_part_thread(self,path, hash_file, hash_part, message):
 		print "Download Part Thread"
-
-		for i in message["address_peers"]:
-			msn = json.dumps({"type": 1,"file": hash_file, "part" : hash_part})
-			socket_cliente = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-			socket_cliente.sendto(msn, (i[0], i[1]) )
-			print "Peer download: "+ str(socket_cliente.getsockname()) +"  requisitei ao peer " + str(i) + "um data de uma parte"
-			th=Thread( target=self.download_part_peer,
-						args = ( path, hash_file,hash_part, socket_cliente) )
-			th.start()
+		from random import randint
+		i = (message["address_peers"])[randint(0,len((message["address_peers"]))- 1)]
+		msn = json.dumps({"type": 1,"file": hash_file, "part" : hash_part})
+		socket_cliente = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+		socket_cliente.sendto(msn, (i[0], i[1]) )
+		print "Peer download: "+ str(socket_cliente.getsockname()) +"  requisitei ao peer " + str(i) + "um data de uma parte"
+		th=Thread( target=self.download_part_peer,
+					args = ( path, hash_file,hash_part, socket_cliente) )
+		th.start()
 
 	def download_part_peer(self,path, hash_file, hash_part, socket_cliente):
 		while 1:
@@ -98,8 +98,13 @@ class Peer():
 			hash_file = message["file"]
 			f = file.File(path.replace(".pytorrent", ""))
 			f.data_to_part(data)
+			import os.path
+			print f.get_path() + "Existe?"
 			if f.is_complete():
-				f.merge()
+				if os.path.exists(f.get_path()) == False:
+					print "Chamou merge em download_part_peer completo"
+					open(f.get_path(), "wr")
+					f.merge()
 				break
 
 
