@@ -13,8 +13,6 @@ class Address():
 	def __repr__(self):
 		return str(self.__ip) + ":" + str(self.__port)
 
-
-
 	def set_ip(self, ip):
 		self.__ip = ip
 

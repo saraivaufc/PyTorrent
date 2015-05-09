@@ -1,9 +1,10 @@
 #-*- encoding=utf-8 -*-
 
-import part
+import part, utils
 import hashlib, os, json
 from threading import Thread
 import multiprocessing
+import os.path
 
 #chunk = 569344
 chunk = 50000
@@ -13,10 +14,11 @@ class File(object):
 	__path = None
 	__hash = None
 	__parts = None
+	__is_load = False
 
 	def __init__(self, path = None):
 		self.__path = path
-		self.__parts = []
+		self.__parts = {}
 		self.__hash = self.get_hash_disk()
 		self.load()
 
@@ -38,28 +40,22 @@ class File(object):
 		self.load()
 		return self.__parts
 	def get_hash_disk(self):
-		BLOCKSIZE = 65536
-		hasher = hashlib.md5()
-		try:
-			with open(self.__path, 'rb') as afile:
-				buf = afile.read(BLOCKSIZE)
-				while len(buf) > 0:
-					hasher.update(buf)
-					buf = afile.read(BLOCKSIZE)
-			return hasher.hexdigest()
-		except:
+		if os.path.exists(self.__path):
+			return utils.hash_for_file(self.__path)
+		else:
 			return None
+
 	def get_parts_not_found(self):
 		self.load()
 		not_found = []
 		for part in self.__parts:
-			array = part.to_array()
-			if array == None:
+			data = part.get_data()
+			if data == None:
 				not_found.append(part)
 		return not_found
 
 	def data_to_part(self, data):
-		hash_data = hashlib.md5(data).hexdigest()
+		hash_data =  utils.hash_for_string(data)
 		part_file = part.Part(hash_data, str(self.__hash) + "/")
 		try:
 			os.mkdir(str(self.__hash) + "/")
@@ -68,33 +64,34 @@ class File(object):
 		part_file.set_data(data)
 
 	def part_to_data_in_parts(self, hash, dead= False):
-		part_file = part.Part(hash)
-		data = None
-		for i in self.__parts:
-			if i == part_file:
-				data = i.to_array()
+		part = self.__parts[hash]
+		data = part.get_data()
 		if data == None or len(data) <= 1:
 			if dead == True:
 				return None
 			data = self.part_to_data_in_file(hash, True)
+		print "A part veio das Parts"
 		return data
 
 	def part_to_data_in_file(self, hash, dead= False):
-		part_file = part.Part(hash)
-		for i in self.__parts:
-			if i == part_file:
-				try:
-					file = open(self.__path, "rb")
-				except:
-					if dead == True:
-						return None
-					return self.part_to_data_in_parts(hash, True)
-				file.seek(i.get_index() - chunk)
-				data_file = file.read(chunk)
-				file.close()
-				print "A part veio do arquivo"
-				return data_file
+		try:
+			part = self.__parts[hash]
+		except:
+			print "Part NOT FOUND = part_to_data_in_file"
+			return None
+		try:
+			file = open(self.__path, "rb")
+		except:
+			if dead == True:
+				return None
+			return self.part_to_data_in_parts(hash, True)
+		file.seek(part.get_index() - chunk)
+		data_file = file.read(chunk)
+		file.close()
+		print "A part veio do arquivo"
+		return data_file
 
+		-------- **** -------
 
 
 	def merge(self):
@@ -117,7 +114,12 @@ class File(object):
 		return self.__hash == self.get_hash_disk()
 
 	def load(self):
-		print "load file: " + self.__path
+		if self.__is_load:
+			return
+		else:
+			self.__is_load = True
+
+		print "Carregando o Arquivo: " + self.__path
 		try:
 			dict_data = json.loads( open(self.__path + ".pytorrent").read())
 			print ".pytorrent FOUND"
@@ -128,9 +130,9 @@ class File(object):
 			except:
 				print ".pytorrent NOT FOUND"
 				try:
-					import os.path
 					if os.path.exists(self.__path):
 						self.divider_parts()
+						self.__is_load = False
 						return self.load()
 					else:
 						return False
@@ -139,9 +141,7 @@ class File(object):
 
 		self.__hash = dict_data['hash']
 		self.__path = dict_data['path']
-		#erro aqui
 		parts_str = json.loads(dict_data['parts'])
-
 		self.__parts = []
 		for i in parts_str["parts"]:
 			self.__parts.append(part.Part(i["hash"], self.__hash + "/" , i["index"]))
