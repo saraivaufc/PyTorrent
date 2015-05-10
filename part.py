@@ -15,8 +15,8 @@ class Part():
 	def __eq__(self, part):
 		return self.__hash == part.__hash
 
-	def set_hash(self, hash):
-		self.__hash = hash
+	def set_hash(self, new_hash):
+		self.__hash = new_hash
 	def set_path(self, path):
 		self.__path = path
 	def set_data(self, data):

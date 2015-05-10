@@ -1,11 +1,11 @@
-import  address
 #import tracker
 import socket
 import json
 from threading import Thread
+from random import randint
 import file
 
-buffer = 65536
+buffer_size = 65536
 
 # max 65536 Bytes
 
@@ -52,7 +52,7 @@ class Peer():
 		hash_file = f.get_hash()
 		self.__files_download[hash_file] = f
 		#para cada uma das partes
-		for i in f.get_parts():
+		for i in f.get_parts().values():
 			hash_part = i.get_hash()
 			message = json.dumps({"type":3, "file": hash_file, "part": hash_part })
 			#para cada um dos trackers
@@ -61,7 +61,7 @@ class Peer():
 				print "Peer download- eu " + str(self.__socket_peer_download.getsockname()) + " pedir ao tracker " + str(k.get_address()) + "a lista dos peer dese arquivo"
 			while 1:
 				#response in 30
-				message, tracker_address = self.__socket_peer_download.recvfrom(buffer)
+				message, tracker_address = self.__socket_peer_download.recvfrom(buffer_size)
 				print "Peer download- eu " + str(self.__socket_peer_download.getsockname()) + " recebi do tracker" + str(tracker_address) + "a lista dos peers"
 				try:
 					message = json.loads(message)
@@ -73,8 +73,13 @@ class Peer():
 				break
 	def download_part_thread(self,path, hash_file, hash_part, message):
 		print "Download Part Thread"
-		from random import randint
-		i = (message["address_peers"])[randint(0,len((message["address_peers"]))- 1)]
+		#try:
+		print "Endereco dos Peers que estao upando" + str(message["address_peers"]) + "\n"
+		i = message["address_peers"].pop()
+		#except:
+		#	print "Sem Addres Peers"
+		#	return
+		
 		msn = json.dumps({"type": 1,"file": hash_file, "part" : hash_part})
 		socket_cliente = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 		socket_cliente.sendto(msn, (i[0], i[1]) )
@@ -84,18 +89,20 @@ class Peer():
 		th.start()
 
 	def download_part_peer(self,path, hash_file, hash_part, socket_cliente):
+		print "Download Par Peeer"
 		while 1:
-			message, peer_address = socket_cliente.recvfrom(buffer)
+			message, peer_address = socket_cliente.recvfrom(buffer_size)
 			print "Pee download, "+ str(socket_cliente.getsockname()) +" recebi do peer " + str(peer_address) + "um arquivo"
 			try:
 				message = json.loads(message)
 				self.__peers_sleep[peer_address] = message
+				print "continue"
 				continue
 			except:
+				print "pegando adata"
 				data = message
 				message = self.__peers_sleep[peer_address]
 
-			hash_file = message["file"]
 			f = file.File(path.replace(".pytorrent", ""))
 			f.data_to_part(data)
 			import os.path
@@ -122,13 +129,13 @@ class Peer():
 		f = file.File(path)
 		self.__files_upload[f.get_hash()] = f
 		f.divider_parts()
-		for i in f.get_parts():
+		for i in f.get_parts().values():
 			message = json.dumps({"type": 2, "file": f.get_hash(), "part": i.get_hash() })
 			for k in self.__trackers:
 				self.__socket_peer_upload.sendto(message, (k.get_address().get_ip(),k.get_address().get_port()))
 				print "Peer upload : Eu "+  str(self.__address) +"  mandei um arquivo pro tracker " + str(k.get_address())
 		while 1:
-			message, peer_address = self.__socket_peer_upload.recvfrom(buffer)
+			message, peer_address = self.__socket_peer_upload.recvfrom(buffer_size)
 			message = json.loads(message)
 			if int(message["type"]) == 1:
 				print "Peer upload : Eu " + str(self.__address) + "recebi do Peer " + str(peer_address) + "um pedido de arquivo" 
@@ -139,11 +146,9 @@ class Peer():
 				print "Peer upload: "+ str(self.__address) +", O Tracker " + str(peer_address) + "confirmou o recebimento do meu upload"
 
 	def upload_part_thread(self,hash_file, hash_part, address):
-		response = ""
 		f = self.__files_upload[hash_file]
 		data = f.part_to_data_in_parts(hash_part)
-		import sys,utils
-		
+		import sys
 		response = json.dumps({"type": 10, "file": hash_file, "part" : hash_part})
 		print "Tamanho para enviar depois do dumps = " + str(sys.getsizeof(response))
 		self.__socket_peer_upload.sendto(response, address)

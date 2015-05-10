@@ -1,9 +1,7 @@
 #-*- encoding=utf-8 -*-
 
 import part, utils
-import hashlib, os, json
-from threading import Thread
-import multiprocessing
+import hashlib,json
 import os.path
 
 #chunk = 569344
@@ -28,8 +26,8 @@ class File(object):
 	#SETS
 	def set_path(self, part):
 		self.__path = part
-	def set_hash(self, hash):
-		self.__hash = hash
+	def set_hash(self, new_hash):
+		self.__hash = new_hash
 
 	#GETS
 	def get_path(self):
@@ -48,7 +46,7 @@ class File(object):
 	def get_parts_not_found(self):
 		self.load()
 		not_found = []
-		for part in self.__parts:
+		for part in self.__parts.values():
 			data = part.get_data()
 			if data == None:
 				not_found.append(part)
@@ -63,35 +61,40 @@ class File(object):
 			pass
 		part_file.set_data(data)
 
-	def part_to_data_in_parts(self, hash, dead= False):
-		part = self.__parts[hash]
+	def part_to_data_in_parts(self, hash_part, dead= False):
+		try:
+			part = self.__parts[hash_part]
+		except:
+			print "Parts NOT FOUNT in Parts"
+			return self.part_to_data_in_file(hash_part, True)
+		
 		data = part.get_data()
 		if data == None or len(data) <= 1:
 			if dead == True:
 				return None
-			data = self.part_to_data_in_file(hash, True)
+			return self.part_to_data_in_file(hash_part, True)
 		print "A part veio das Parts"
 		return data
 
-	def part_to_data_in_file(self, hash, dead= False):
+	def part_to_data_in_file(self, hash_part, dead= False):
 		try:
-			part = self.__parts[hash]
+			part = self.__parts[hash_part]
 		except:
-			print "Part NOT FOUND = part_to_data_in_file"
+			print "Part NOT FOUND in File"
 			return None
 		try:
-			file = open(self.__path, "rb")
+			f = open(self.__path, "rb")
 		except:
 			if dead == True:
 				return None
-			return self.part_to_data_in_parts(hash, True)
-		file.seek(part.get_index() - chunk)
-		data_file = file.read(chunk)
-		file.close()
+			return self.part_to_data_in_parts(hash_part, True)
+		f.seek(part.get_index() - chunk)
+		data_file = f.read(chunk)
+		f.close()
 		print "A part veio do arquivo"
 		return data_file
 
-		-------- **** -------
+		#-------- **** -------
 
 
 	def merge(self):
@@ -100,11 +103,11 @@ class File(object):
 		not_found = self.get_parts_not_found()
 		if len(not_found) > 0:
 			return False
-		file = open(self.__path, "wb")
+		f = open(self.__path, "wb")
 		print "Foi encontradas " + str(len(self.__parts)) + "No diretorio"
-		for part in self.__parts:
-			file.write(part.to_array())
-		file.close()
+		for part in self.__parts.values():
+			f.write(part.get_data())
+		f.close()
 		if self.checksum():
 			return True
 		else:
@@ -142,26 +145,28 @@ class File(object):
 		self.__hash = dict_data['hash']
 		self.__path = dict_data['path']
 		parts_str = json.loads(dict_data['parts'])
-		self.__parts = []
+		self.__parts = {}
 		for i in parts_str["parts"]:
-			self.__parts.append(part.Part(i["hash"], self.__hash + "/" , i["index"]))
+			self.__parts[i["hash"]] = part.Part(i["hash"], self.__hash + "/" , i["index"])
+
 		return True
 	def divider_parts(self):
 		print "Iniciando Particionamento"
 		try:
-			file = open(self.__path, "rb")
+			f = open(self.__path, "rb")
 		except:
 			print "Arquivo Not Founf"
 			return False
-		file.seek(0, 2)
-		size_file = file.tell()
-		file.seek(0)
-		self.__parts = []
-		while file.tell() < size_file:
-			buffer = file.read(chunk)
-			part_file = part.Part(hashlib.md5(buffer).hexdigest(),str(self.__hash) + "/", file.tell())
-			part_file.set_data(buffer)
-			self.__parts.append(part_file)
+		f.seek(0, 2)
+		size_file = f.tell()
+		f.seek(0)
+		self.__parts = {}
+		while f.tell() < size_file:
+			buffer_size = f.read(chunk)
+			hash_part = hashlib.md5(buffer_size).hexdigest()
+			part_file = part.Part(hash_part,str(self.__hash) + "/", f.tell())
+			part_file.set_data(buffer_size)
+			self.__parts[hash_part] = part_file
 		self.export()
 		print "Terminou o particionamento"
 
@@ -169,20 +174,20 @@ class File(object):
 		json_parts = '{"parts" : ['
 		is_fisrt = True
 		print "Export parts " + str(len(self.__parts))
-		for i in self.__parts:
+		for i in self.__parts.values():
 			if is_fisrt:
 				is_fisrt = False
 			else:
 				json_parts += ','
-			json_parts += str(i.to_JSON())
+			json_parts += str(i.to_json())
 
 		json_parts += "]}"
 		dict_data = {'hash': self.__hash , 'path': self.__path , 'parts': str(json_parts) }
-		string = json.dump(dict_data, open( self.__path + ".pytorrent" , "wb" ))
+		json.dump(dict_data, open( self.__path + ".pytorrent" , "wb" ))
 
 	def is_complete(self):
 		self.load()
-		for i in self.__parts:
+		for i in self.__parts.values():
 			if not i.exist():
 				return False
 		return True
