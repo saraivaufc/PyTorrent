@@ -66,7 +66,7 @@ class File(object):
 		try:
 			part = self.__parts[hash_part]
 		except:
-			print "Parts NOT FOUNT in Parts"
+			#-- "Parts NOT FOUNT in Parts"
 			return self.part_to_data_in_file(hash_part, True)
 		
 		data = part.get_data()
@@ -74,14 +74,14 @@ class File(object):
 			if dead == True:
 				return None
 			return self.part_to_data_in_file(hash_part, True)
-		print "A part veio das Parts"
+		#-- "A part veio das Parts"
 		return data
 
 	def part_to_data_in_file(self, hash_part, dead= False):
 		try:
 			part = self.__parts[hash_part]
 		except:
-			print "Part NOT FOUND in File"
+			#-- print "Part NOT FOUND in File"
 			return None
 		try:
 			f = open(self.__path, "rb")
@@ -92,24 +92,19 @@ class File(object):
 		f.seek(part.get_index() - chunk)
 		data_file = f.read(chunk)
 		f.close()
-		print "A part veio do arquivo"
+		#--print "A part veio do arquivo"
 		return data_file
-
-		#-------- **** -------
-
 
 	def merge(self):
 		self.load()
 		print "Fazendo o merge do arquivos"
 		not_found = self.get_parts_not_found()
 		if len(not_found) > 0:
+			print "Ainda falta partes para serem baixadas"
 			return False
 		f = open(self.__path, "wb")
-		print "Foi encontradas " + str(len(self.__parts)) + "No diretorio"
 		parts = self.__parts.values()
 		parts.sort()
-		print (parts)
-		print "Asdsd"
 		for part in parts:
 			f.write(part.get_data())
 		f.close()
@@ -126,7 +121,7 @@ class File(object):
 			return
 		else:
 			self.__is_load = True
-
+			
 		print "Carregando o Arquivo: " + self.__path
 		try:
 			dict_data = json.loads( open(self.__path + ".pytorrent").read())

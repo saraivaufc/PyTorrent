@@ -29,6 +29,8 @@
 *.pyc
 *.mp3
 *.part
-.mp3
-.part
+*.mp3
+*.mp4
+*.3gp
+*.part
 *.iso

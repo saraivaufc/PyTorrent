@@ -1,11 +1,14 @@
 #import tracker
 import socket, json, file
-from threading import Thread
+from threading import Thread, Lock
+import os.path
+import multiprocessing
 #from random import randint
 buffer_size = 65536
 
 # max 65536 Bytes
-
+mutex = Lock()
+max_threads = multiprocessing.cpu_count()
 
 class Peer():
 	"""docstring for Peer"""
@@ -47,9 +50,15 @@ class Peer():
 		print "Download Thread"
 		f = file.File(path)
 		if f.is_complete():
-			return
+			if f.exist():
+				print "Arquivo completo"
+				return
+			else:
+				f.merge()
+				return
 		#se o arquivo existir
 		if f.exist():
+			print "Arquivo ja existe"
 			return
 	
 		hash_file = f.get_hash()
@@ -91,16 +100,25 @@ class Peer():
 			hash_part = i.get_hash()
 			msn = json.dumps({"type": 1,"file": hash_file, "part" : hash_part})
 			socket_cliente = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+			threads_download = []
 			for k in peers:
 				socket_cliente.sendto(msn, (k[0], k[1]) )
 			print "Peer download: "+ str(socket_cliente.getsockname()) +"  requisitei ao peer " + str(i) + "um data de uma parte"
 			th=Thread( target=self.download_part_peer,
 						args = ( path, hash_file,hash_part, socket_cliente) )
 			th.start()
+			threads_download.append(th)
+			if len(threads_download) >= max_threads:
+				for i in threads_download:
+					i.join()
 
 	def download_part_peer(self,path, hash_file, hash_part, socket_cliente):
-		print "Download Par Peeer"
+		print "Entrando na Thread Download Par Peeer!!! \n"
+		f = file.File(path.replace(".pytorrent", ""))
 		while 1:
+			if f.exist():
+				print "File ja existe"
+				break
 			message, peer_address = socket_cliente.recvfrom(buffer_size)
 			print "Pee download, "+ str(socket_cliente.getsockname()) +" recebi do peer " + str(peer_address) + "um arquivo"
 			try:
@@ -111,23 +129,23 @@ class Peer():
 			except:
 				print "pegando adata"
 				data = message
-				message = self.__peers_sleep[peer_address]
-
-			f = file.File(path.replace(".pytorrent", ""))
+				message = self.__peers_sleep[peer_address]	
 			f.data_to_part(data)
-			import os.path
+			
+			mutex.acquire()
 			if f.is_complete():
 				print "Download Completo!!! \n"
-				if os.path.exists(f.get_path()) == False:
-					if f.exist():
+				if f.exist():
 						print "Arquivo ja existe!!!!\n"
 						break
-					print "Chamou merge em download_part_peer completo"
-					if f.merge() == False:
-						print "*******************Erro ao fazer o merge ****************"
-					else:
-						print "*************Arquivo baixado com exito **************"
-				return
+				print "Chamou merge em download_part_peer completo"
+				if f.merge() == False:
+					print "*******************Erro ao fazer o merge ****************"
+				else:
+					print "*************Arquivo baixado com exito **************"
+				mutex.release()
+				break
+			mutex.release()
 
 
 
