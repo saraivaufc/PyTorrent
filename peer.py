@@ -1,10 +1,7 @@
 #import tracker
-import socket
-import json
+import socket, json, file
 from threading import Thread
-from random import randint
-import file
-
+#from random import randint
 buffer_size = 65536
 
 # max 65536 Bytes
@@ -49,44 +46,57 @@ class Peer():
 	def download_thread(self, path):
 		print "Download Thread"
 		f = file.File(path)
+		if f.is_complete():
+			return
+		#se o arquivo existir
+		if f.exist():
+			return
+	
 		hash_file = f.get_hash()
+		
+		if hash_file == None:
+			print "Morreu"
+			return
+		
 		self.__files_download[hash_file] = f
 		#para cada uma das partes
-		for i in f.get_parts().values():
-			hash_part = i.get_hash()
-			message = json.dumps({"type":3, "file": hash_file, "part": hash_part })
-			#para cada um dos trackers
-			for k in self.__trackers:
-				self.__socket_peer_download.sendto(message, (k.get_address().get_ip(),k.get_address().get_port()))
-				print "Peer download- eu " + str(self.__socket_peer_download.getsockname()) + " pedir ao tracker " + str(k.get_address()) + "a lista dos peer dese arquivo"
-			while 1:
-				#response in 30
-				message, tracker_address = self.__socket_peer_download.recvfrom(buffer_size)
-				print "Peer download- eu " + str(self.__socket_peer_download.getsockname()) + " recebi do tracker" + str(tracker_address) + "a lista dos peers"
-				try:
-					message = json.loads(message)
-					th=Thread( target=self.download_part_thread,
-								args = (path, hash_file,hash_part, message ) )
-					th.start()
-				except:
-					print "Falha ao carregar a resposta"
-				break
-	def download_part_thread(self,path, hash_file, hash_part, message):
+		message = json.dumps({"type":3, "file": hash_file})
+		#para cada um dos trackers
+		for k in self.__trackers:
+			self.__socket_peer_download.sendto(message, (k.get_address().get_ip(),k.get_address().get_port()))
+			print "Peer download- eu " + str(self.__socket_peer_download.getsockname()) + " pedir ao tracker " + str(k.get_address()) + "a lista dos peer dese arquivo"
+		while 1:
+			#response in 30
+			message, tracker_address = self.__socket_peer_download.recvfrom(buffer_size)
+			print "Peer download- eu " + str(self.__socket_peer_download.getsockname()) + " recebi do tracker" + str(tracker_address) + "a lista dos peers"
+			try:
+				message = json.loads(message)
+				th=Thread( target=self.download_part_thread,
+							args = (path, hash_file, f.get_parts() ,  message ) )
+				th.start()
+			except:
+				print "Falha ao carregar a resposta"
+				continue
+			if f.exist():
+				return
+			#break
+	def download_part_thread(self,path, hash_file, parts, message):
 		print "Download Part Thread"
 		#try:
-		print "Endereco dos Peers que estao upando" + str(message["address_peers"]) + "\n"
-		i = message["address_peers"].pop()
+		peers = message["address_peers"]
 		#except:
 		#	print "Sem Addres Peers"
 		#	return
-		
-		msn = json.dumps({"type": 1,"file": hash_file, "part" : hash_part})
-		socket_cliente = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-		socket_cliente.sendto(msn, (i[0], i[1]) )
-		print "Peer download: "+ str(socket_cliente.getsockname()) +"  requisitei ao peer " + str(i) + "um data de uma parte"
-		th=Thread( target=self.download_part_peer,
-					args = ( path, hash_file,hash_part, socket_cliente) )
-		th.start()
+		for i in parts.values():
+			hash_part = i.get_hash()
+			msn = json.dumps({"type": 1,"file": hash_file, "part" : hash_part})
+			socket_cliente = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+			for k in peers:
+				socket_cliente.sendto(msn, (k[0], k[1]) )
+			print "Peer download: "+ str(socket_cliente.getsockname()) +"  requisitei ao peer " + str(i) + "um data de uma parte"
+			th=Thread( target=self.download_part_peer,
+						args = ( path, hash_file,hash_part, socket_cliente) )
+			th.start()
 
 	def download_part_peer(self,path, hash_file, hash_part, socket_cliente):
 		print "Download Par Peeer"
@@ -106,16 +116,18 @@ class Peer():
 			f = file.File(path.replace(".pytorrent", ""))
 			f.data_to_part(data)
 			import os.path
-			print f.get_path() + "Existe?"
 			if f.is_complete():
+				print "Download Completo!!! \n"
 				if os.path.exists(f.get_path()) == False:
+					if f.exist():
+						print "Arquivo ja existe!!!!\n"
+						break
 					print "Chamou merge em download_part_peer completo"
-					open(f.get_path(), "wr")
 					if f.merge() == False:
-						print "*******************Arquivo Corrompido ****************"
+						print "*******************Erro ao fazer o merge ****************"
 					else:
 						print "*************Arquivo baixado com exito **************"
-				break
+				return
 
 
 
@@ -138,7 +150,8 @@ class Peer():
 			message, peer_address = self.__socket_peer_upload.recvfrom(buffer_size)
 			message = json.loads(message)
 			if int(message["type"]) == 1:
-				print "Peer upload : Eu " + str(self.__address) + "recebi do Peer " + str(peer_address) + "um pedido de arquivo" 
+				print "Peer upload : Eu " + str(self.__address) + "recebi do Peer " + str(peer_address) + "um pedido de arquivo"
+				print "Pedido foi == " + str(message) 
 				th=Thread( target=self.upload_part_thread,
 						args = ( message["file"], message["part"], peer_address))
 				th.start()
@@ -146,8 +159,15 @@ class Peer():
 				print "Peer upload: "+ str(self.__address) +", O Tracker " + str(peer_address) + "confirmou o recebimento do meu upload"
 
 	def upload_part_thread(self,hash_file, hash_part, address):
-		f = self.__files_upload[hash_file]
-		data = f.part_to_data_in_parts(hash_part)
+		try:
+			print "Files que eu estou upando" + str(self.__files_upload.keys())
+			f = self.__files_upload[hash_file]
+		except:
+			return 
+		try:
+			data = f.part_to_data_in_parts(hash_part)
+		except:
+			return
 		import sys
 		response = json.dumps({"type": 10, "file": hash_file, "part" : hash_part})
 		print "Tamanho para enviar depois do dumps = " + str(sys.getsizeof(response))

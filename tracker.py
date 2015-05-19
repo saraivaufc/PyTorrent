@@ -45,6 +45,7 @@ class Tracker():
 		th=Thread( target=self.add_peer_in_swarm_thread,
 					args = ( hash_file, hash_part, address, ) )
 		th.start()
+		th.join()
 	def add_peer_in_swarm_thread(self, hash_file, hash_part, address):
 		try:
 			swarm_file = self.__swarms[hash_file]
@@ -88,18 +89,23 @@ class Tracker():
 			response = json.dumps({"type": 20})
 		elif type_request == 3:
 			hash_file = request["file"]
-			hash_part = request["part"]
-			try:
-				swarm_file = self.__swarms[hash_file]
-				peers = swarm_file.get_peers(hash_part)
-				address_peers = []
-				for i in peers:
-					address_peers.append(i.get_address())
-				print address_peers
-				response = json.dumps({"type": 30 , "address_peers": address_peers }) #"swarm": swarm_file
-			except:
-				response = "Erro"
-				print "Hash File not found"
+			#try:
+			print request
+			print request["file"]
+			print str(self.__swarms.keys())
+			# *************** BUGGGGG *****************
+			swarm_file = self.__swarms[hash_file]
+			peers = swarm_file.get_peers_ordering()
+			address_peers = []
+			for i in peers:
+				for k in i:
+					if k.get_address() in address_peers:
+						continue
+					address_peers.append(k.get_address())
+			response = json.dumps({"type": 30 , "address_peers": address_peers }) #"swarm": swarm_file
+			#except:
+				#response = "Erro"
+				#print "Hash File not found"
 		self.__socket_tracker.sendto(response, address)
 		print "Tracker : Resposta Enviada a " + str(address) + " por " + str(self.__address)
 

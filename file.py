@@ -48,7 +48,8 @@ class File(object):
 		not_found = []
 		for part in self.__parts.values():
 			data = part.get_data()
-			if data == None:
+			hash_part = utils.hash_for_string(data)
+			if data == None or part.get_hash() != hash_part:
 				not_found.append(part)
 		return not_found
 
@@ -105,7 +106,11 @@ class File(object):
 			return False
 		f = open(self.__path, "wb")
 		print "Foi encontradas " + str(len(self.__parts)) + "No diretorio"
-		for part in self.__parts.values():
+		parts = self.__parts.values()
+		parts.sort()
+		print (parts)
+		print "Asdsd"
+		for part in parts:
 			f.write(part.get_data())
 		f.close()
 		if self.checksum():
@@ -188,8 +193,16 @@ class File(object):
 	def is_complete(self):
 		self.load()
 		for i in self.__parts.values():
-			if not i.exist():
+			if i.exist() == False:
 				return False
 		return True
+	
+	def exist(self):
+		self.load()
+		try:
+			if self.get_hash() == self.get_hash_disk():
+				return True
+		except:
+			return False
 
 

@@ -14,6 +14,14 @@ class Swarm(object):
 		self.__hash_file = hash_file
 	def get_hash_file(self):
 		return self.__hash_file
+	
+	def get_peers_ordering(self):
+		""" Ainda tenho que ordenar essa daqui """
+		peers = []
+		for i in (self.__part_peer).values():
+			peers.append(i.get_peers())
+		return peers
+			
 
 	def get_peers(self, hash_part):
 		try:
