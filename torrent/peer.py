@@ -1,6 +1,7 @@
 #import tracker
 import multiprocessing
 import socket, json, file
+import os.path
 from threading import Thread, Lock
 
 
@@ -154,10 +155,10 @@ class Peer():
 
 
 	def upload(self, path):
-		th=Thread( target=self.upload_thread,
+		th=Thread( target=self.upload_thread_file,
 					args = ( path, ) )
 		th.start()
-	def upload_thread(self, path):
+	def upload_thread_file(self, path):
 		f = file.File(path)
 		self.__files_upload[f.get_hash()] = f
 		f.divider_parts()
@@ -178,7 +179,6 @@ class Peer():
 
 	def upload_part_thread(self,hash_file, hash_part, address):
 		try:
-			print "Files que eu estou upando" + str(self.__files_upload.keys())
 			f = self.__files_upload[hash_file]
 		except:
 			return 
@@ -193,7 +193,6 @@ class Peer():
 		self.__socket_peer_upload.sendto(data, address)
 
 		print "Peer upload: Eu " + str(self.__address) + "respondi com a parte ao peer " + str(address)
-
 
 	def set_address(self, address):
 		self.__address = address

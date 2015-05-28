@@ -27,6 +27,7 @@
 *.out
 *.app
 *.pyc
+*.ape
 *.mp3
 *.part
 *.mp3
