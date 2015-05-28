@@ -7,3 +7,4 @@ peer_download.run()
 
 #peer_download.download("musica.mp3.pytorrent")
 peer_download.download("music.ape.pytorrent")
+#peer_download.upload("music.ape.pytorrent")
